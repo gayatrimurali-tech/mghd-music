@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dindi Music Player</title>
+    <style>
+        :root {
+            /* CHANGED: Premium soft white and light grey ambient theme colors */
+            --bg-color: #f0f2f5;       /* Light concrete background */
+            --container-bg: #ffffff;   /* Crisp white player box panel */
+            --accent-color: #e63946;   /* Crimson red matching the needle/glowing halo */
+            --text-color: #1a1a1a;     /* Deep charcoal black for crisp text titles */
+            --text-secondary: #65676b; /* Muted grey for descriptions and durations */
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .player-container {
+            background-color: var(--container-bg);
+            border-radius: 15px;
+            padding: 30px;
+            width: 100%;
+            max-width: 900px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .player-container { grid-template-columns: 1fr; }
+        }
+
+        /* Left Column: Controls & Visuals */
+        .main-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        h1 {
+            margin: 0 0 20px 0;
+            color: var(--accent-color);
+            font-size: 28px;
+            text-align: center;
+        }
+
+        /* CD Animation */
+        .cd-wrapper {
+            position: relative;
+            width: 140px;
+            height: 140px;
+            margin: 10px 0;
+        }
+
+        .cd-thumb {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            /* Solid background fallback that updates dynamically to your track image */
+            background-color: #222;
+            background-position: center;
+            background-size: cover;
+            background-repeat: no-repeat;
+            box-shadow: 0 0 50px rgba(230, 57, 70, 0.6), inset 0 0 20px rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            animation: rotateCD 8s linear infinite;
+            animation-play-state: paused;
+        }
+
+        .cd-needle {
+            position: absolute;
+            top: -10px;
+            right: 20px;
+            width: 9px;
+            height: 50px;
+            background-color: #888; /* Silver arm body */
+            border-radius: 4px;
+            z-index: 10;
+            transform-origin: top center;
+            transform: rotate(-25deg); /* Paused resting position */
+            transition: transform 2.2s ease;
+            box-shadow: -2px 2px 5px rgba(0,0,0,0.5);
+        }
+
+        /* The actual red pointer tip at the end of the needle arm */
+        .cd-needle::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: -4px;
+            width: 16px;
+            height: 16px;
+            background-color: #e63946; /* Vivid red needle indicator */
+            border-radius: 50%;
+            border: 2px solid #fff;
+        }
+        
+        /* Pivot point cap at the top base of the needle arm */
+        /* పాట ప్లే అవుతున్నప్పుడు ఎరుపు బిందువు క్రింద నుండి పక్కకి చిన్న పిన్ వచ్చే లాజిక్ */
+        .cd-needle.playing::before {
+        content: '';
+        position: absolute;
+        /* ఎరుపు బిందువు క్రింద, పక్క భాగంలోకి పిన్ వచ్చేలా పొజిషన్ సెట్ చేశాము */
+        bottom: -10px; 
+        left: 1px;
+        width: 2px;          /* పిన్ సన్నదనం */
+        height: 9px;         /* పిన్ పొడవు */
+        background-color: #6109ee; /* పిన్ యొక్క తెల్లటి/సిల్వర్ రంగు */
+        border-radius: 0px;
+        /* పిన్ పక్కకి వాలినట్లు కనిపించడానికి 25 డిగ్రీలు తిప్పాము */
+        transform: rotate(40deg); 
+        box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4);
+        z-index: -1;         /* ఎరుపు బిందువు క్రింది నుండి బయటకు రావడానికి */
+}
+
+        /* పాట ప్లే అవుతున్నప్పుడు ఎరుపు వృత్తం పరిమాణం తగ్గే లాజిక్ */
+        .cd-needle.playing::after {
+        width: 10px !important;    /* పరిమాణం 16px నుండి 10px కి తగ్గించబడింది */
+        height: 10px !important;   /* పరిమాణం 16px నుండి 10px కి తగ్గించబడింది */
+        bottom: -2px !important;   /* చిన్నగా అయినందున స్థానాన్ని సరిచేసాము */
+        left: -1px !important;     /* సూది కి సరిగ్గా మధ్యలో ఉండేలా అమర్చాము */
+}
+
+        /* Swings the needle onto the vinyl surface when playing */
+        .cd-needle.playing {
+            transform: rotate(6deg); 
+        }
+        
+
+ .cd-thumb::after {
+    content: '';
+    position: absolute;
+    width: 20px; 
+    height: 20px; 
+    background-color: #000000; /* సిడి మధ్యలో నల్లటి రంధ్రంలా మారుస్తుంది */
+    border-radius: 50%;
+    border: 3px solid #222;
+    z-index: 5; /* పోస్టర్ పైన రంధ్రం స్పష్టంగా కనిపించడానికి */
+}
+
+
+        .cd-thumb.playing {
+            animation-play-state: running;
+        }
+
+        @keyframes rotateCD {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Track Info */
+        .track-info {
+            text-align: center;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+
+        .track-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Visualizer Canvas */
+        canvas {
+            width: 100%;
+            height: 60px;
+            background-color: #111;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        /* Audio Controls */
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            background-color: var(--accent-color);
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+            background-color: #1ed760;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        input[type="range"] {
+            flex-grow: 1;
+            accent-color: var(--accent-color);
+            cursor: pointer;
+        }
+
+        /* Equalizer Settings */
+        .eq-container {
+            width: 100%;
+            background: #282828;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            box-sizing: border-box;
+        }
+
+        .eq-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: var(--text-secondary);
+        }
+
+        .eq-sliders {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .eq-band {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 10px;
+            color: var(--text-secondary);
+        }
+
+        .eq-band input[type="range"] {
+            writing-mode: vertical-lr;
+            direction: rtl;
+            height: 80px;
+            width: 10px;
+            margin-bottom: 5px;
+        }
+
+        /* Right Column: Playlist Management */
+        .playlist-panel {
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid #333;
+            padding-left: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .playlist-panel {
+                border-left: none;
+                padding-left: 0;
+                border-top: 1px solid #333;
+                padding-top: 20px;
+            }
+        }
+
+        .file-selector-btn {
+            background-color: #333;
+            text-align: center;
+            padding: 15px;
+            border: 2px dashed #555;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-bottom: 15px;
+            transition: border-color 0.2s;
+            display: block;
+            color: #ffffff !important; 
+        }
+
+        .file-selector-btn:hover {
+            border-color: var(--accent-color);
+        }
+
+        #file-input { display: none; }
+
+        .playlist-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            /* CHANGED: Makes the "Songs List" section title text dark and clearly readable */
+            color: #1a1a1a !important;
+            font-weight: bold;
+        }
+
+        select {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            /* CHANGED: Makes the "Songs List" section title text dark and clearly readable */
+            color: #1a1a1a !important;
+            font-weight: bold;
+        
+        }
+
+        .playlist-list {
+            flex-grow: 1;
+            height: 320px;
+            overflow-y: auto;
+            background-color: #f8f9f0;
+            border-radius: 10px;
+            padding: 10px;
+            list-style: none;
+            margin: 0;
+            border: 1px solid #e5e5ea;
+        }
+
+        .playlist-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .playlist-list::-webkit-scrollbar-thumb {
+            background-color: #444;
+            border-radius: 3px;
+        }
+
+        .playlist-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+
+            padding: 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 14px;
+            /* CHANGED: Set to a sharp charcoal dark color so every text tile is perfectly visible */
+            color: #2c2c2c !important; 
+            background-color: #f5f5f7; /* Gives each song tile a distinct light background */
+            border: 1px solid #e5e5ea;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        /* Delete button formatting */
+        .delete-btn {
+            background: none !important;
+            border: none !important;
+            color: #ff3b30 !important; /* Warning Red */
+            padding: 2px 6px !important;
+            font-size: 14px !important;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        .delete-btn:hover {
+            background-color: rgba(255, 59, 48, 0.1) !important;
+            transform: scale(1.1);
+        }
+
+        .playlist-item:hover {
+            /* Hover state for when you mouse over other songs */
+            background-color: #e5e5ea;
+            color: #000000 !important;
+        }
+
+        .playlist-item.active {
+            /* Keep your active/playing song highlighted in your theme's crimson red */
+            background-color: rgba(230, 57, 70, 0.1) !important;
+            color: var(--accent-color) !important;
+            font-weight: bold;
+            border-color: var(--accent-color);
+        }
+        /* షఫుల్, రిపీట్ బటన్ల కోసం ప్రత్యేక స్టైలింగ్ */
+.toggle-btn {
+    background-color: #7f8c8d !important;
+    font-size: 14px !important;
+    padding: 10px 14px !important;
+}
+
+.toggle-btn.active {
+    background-color: #1ed760 !important; /* యాక్టివ్ అయినప్పుడు పచ్చ రంగులోకి మారుతుంది */
+    color: black !important;
+}
+
+    </style>
+</head>
+<body>
+
+    <div class="player-container">
+        
+        <!-- Left Side: Visuals & Core Controls -->
+        <div class="main-panel">
+            <h1>MGHD Music Player</h1>
+            
+            <div class="cd-wrapper">
+               <!-- సూది ఫిక్సింగ్ ఏరియా ఎల్లప్పుడూ స్థిరంగా ఉండటానికి బయట ఒక సర్కిల్ జత చేసాము -->
+<!-- సూదిని మళ్లీ మీ పాత ఒరిజినల్ స్థానంలోనే ఉంచాము -->
+<div style="position: relative; width: 100%; height: 0;">
+    <div class="cd-needle" id="cd-needle"></div>
+    <!-- ఈ క్రింది సర్కిల్ ఎల్లప్పుడూ కదలకుండా స్థిరంగా, సూది పైన పర్మినెంట్‌గా ఉంటుంది -->
+    <div style="position: absolute; top: -12px; right: 18px; width: 12px; height: 12px; background-color: #444; border-radius: 50%; z-index: 20; pointer-events: none; box-shadow: -2px 2px 5px rgba(0,0,0,0.3);"></div>
+</div>
+                <div class="cd-thumb" id="cd-thumb"></div>
+            </div>
+
+            <div class="track-info">
+                <div class="track-name" id="track-name">No track selected</div>
+                <div id="track-album" style="font-size: 14px; color: var(--accent-color); margin-top: 4px; font-weight: 500;"></div>
+                <div id="track-artist" style="font-size: 13px; color: var(--text-secondary); margin-top: 2px;"></div>
+            
+            </div>
+
+            <!-- Visualization Canvas -->
+            <canvas id="visualizer"></canvas>
+
+            <!-- Playback Progress Slider -->
+            <div class="slider-container" style="margin-bottom: 15px;">
+                <span id="current-time">0:00</span>
+                <input type="range" id="progress-bar" value="0" min="0" max="100">
+                <span id="total-duration">0:00</span>
+            </div>
+
+            <!-- Essential Controls -->
+          <!-- Essential Controls -->
+<div class="controls">
+    <button id="shuffle-btn" class="toggle-btn" title="Shuffle">🔀</button>
+    <button id="prev-btn">⏮</button>
+    <button id="play-btn" style="font-size: 20px; padding: 12px 30px;">▶</button>
+    <button id="next-btn">⏭</button>
+    <button id="repeat-btn" class="toggle-btn" title="Repeat">🔁</button>
+</div>
+
+
+            <!-- Volume Control -->
+            <div class="slider-container">
+                <span>🔊</span>
+                <input type="range" id="volume-bar" value="80" min="0" max="100">
+            </div>
+
+                        <!-- Equalizer Panel -->
+            <div class="eq-container">
+                <div class="eq-title">Equalizer Settings</div>
+                <div class="eq-sliders">
+                    <div class="eq-band">
+                        <input type="range" class="eq-filter" data-freq="60" min="-10" max="10" value="0">
+                        <span>60Hz</span>
+                    </div>
+                    <div class="eq-band">
+                        <input type="range" class="eq-filter" data-freq="230" min="-10" max="10" value="0">
+                        <span>230Hz</span>
+                    </div>
+                    <div class="eq-band">
+                        <input type="range" class="eq-filter" data-freq="910" min="-10" max="10" value="0">
+                        <span>910Hz</span>
+                    </div>
+                    <div class="eq-band">
+                        <input type="range" class="eq-filter" data-freq="4000" min="-10" max="10" value="0">
+                        <span>4kHz</span>
+                    </div>
+                    <div class="eq-band">
+                        <input type="range" class="eq-filter" data-freq="14000" min="-10" max="10" value="0">
+                        <span>14kHz</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Playlist Management -->
+        <div class="playlist-panel">
+            <!-- ADDED: Global Streaming Search Layout Container -->
+            <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+                <input type="text" id="online-search-input" placeholder="Search songs online..." 
+                       style="flex-grow: 1; padding: 12px; border: 1px solid #e5e5ea; border-radius: 8px; font-size: 14px; outline: none; background: #fdfdfd; color: #1a1a1a;">
+                <button id="online-search-btn" style="padding: 10px 18px; font-size: 14px; border-radius: 8px; background-color: var(--accent-color);">🔍 Search</button>
+            </div>
+            <input type="file" id="file-input" accept="audio/*" multiple>
+            <label class="file-selector-btn" for="file-input">
+                📁 Browse & Add Local Songs
+            </label>
+            
+            <div class="playlist-controls">
+                <span>Songs List</span>
+                <select id="sort-select">
+                    <option value="default">Default Order</option>
+                    <option value="az">A-Z Name</option>
+                    <option value="za">Z-A Name</option>
+                </select>
+            </div>
+
+            <ul class="playlist-list" id="playlist-list">
+                <!-- Songs will be dynamically added here -->
+            </ul>
+        </div>
+    </div>
+    <script src="https://cloudflare.com"></script>
+    <script>
+        // Core Variables
+        let playlist = [];
+        // బంతుల ఎత్తును (Peak points) గుర్తుపెట్టుకోవడానికి కొత్త అరే
+let barPeaks = []; 
+        let currentTrackIndex = -1;
+        let audioContext = null;
+        let audioSource = null;
+        let analyser = null;
+        let eqFilters = [];
+        // షఫుల్ మరియు రిపీట్ స్టేట్ ట్రాకర్స్
+let isShuffle = false;
+let isRepeat = false;
+
+// బటన్ ఎలిమెంట్ సెలెక్టర్లు
+const shuffleBtn = document.getElementById('shuffle-btn');
+const repeatBtn = document.getElementById('repeat-btn');
+        
+        // Element Selectors
+        const audio = new Audio();
+        audio.crossOrigin = "anonymous"; // 👈 ఈ కొత్త లైన్‌ను ఇక్కడ జత చేయండి
+        const playBtn = document.getElementById('play-btn');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const fileInput = document.getElementById('file-input');
+        const playlistList = document.getElementById('playlist-list');
+        const trackNameText = document.getElementById('track-name');
+        const cdThumb = document.getElementById('cd-thumb');
+        const progressBar = document.getElementById('progress-bar');
+        const volumeBar = document.getElementById('volume-bar');
+        const currentTimeText = document.getElementById('current-time');
+        const totalDurationText = document.getElementById('total-duration');
+        const sortSelect = document.getElementById('sort-select');
+        const canvas = document.getElementById('visualizer');
+        const canvasCtx = canvas.getContext('2d');
+
+                // Element Links for the Online API
+        const searchInput = document.getElementById('online-search-input');
+        const searchBtn = document.getElementById('online-search-btn');
+
+        // Jamendo Client ID for legal public music catalog access
+        const JAMENDO_CLIENT_ID = '56d30c55'; 
+
+        // Trigger network lookup when clicking search button
+        searchBtn.addEventListener('click', performOnlineSearch);
+        
+        // Also trigger search instantly if the user presses the 'Enter' key inside the input box
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') performOnlineSearch();
+        });
+
+
+function performOnlineSearch() {
+    const query = searchInput.value.trim().toLowerCase();
+    if (!query) return;
+
+    searchBtn.textContent = '...';
+    searchBtn.disabled = true;
+
+    // 1. అన్ని పెద్ద తెలుగు సినిమాల ఆన్‌లైన్ వర్కింగ్ ఆడియోల పక్కా డేటాబేస్
+  
+    // 2. యూజర్ టైప్ చేసిన పేరు ఏ సినిమాకు మ్యాచ్ అవుతుందో చెక్ చేసే పక్కా ఫిల్టర్ లాజిక్
+    let matchedTracks = [];
+
+    // 3. మ్యాచ్ అయిన నిర్దిష్ట సినిమా పాటలను మాత్రమే మీ ప్లేలిస్ట్‌లోకి పంపడం
+    if (matchedTracks.length > 0) {
+        matchedTracks.forEach(track => {
+            playlist.push({
+                name: track.name,
+                url: track.url,
+                album: `🎬 ${track.album}`,
+                artist: `🎤 ${track.artist}`,
+                art: track.art
+            });
+        });
+        finishSearch(matchedTracks.length);
+    } else {
+        // 1. ప్రపంచవ్యాప్తంగా డెవలపర్లు వాడే అత్యంత వేగవంతమైన ఉచిత Apple iTunes API
+        const apiUrl = `https://apple.com{encodeURIComponent(query)}&media=music&limit=6`;
+
+        fetch(apiUrl)
+            .then(response => {
+                // నెట్‌వర్క్ రెస్పాన్స్ రాకపోతే బ్రౌజర్ ని స్టక్ అవ్వనివ్వకుండా ఇక్కడే సేఫ్ గా ఆపుతుంది
+                if (!response.ok) throw new Error("Network Response Fail");
+                return response.json();
+            })
+            .then(responseBody => {
+                // పాత మెమరీని క్లియర్ చేసి బ్రౌజర్ రామ్ (RAM) ని కాపాడుతుంది
+                playlist = []; 
+
+                if (responseBody && responseBody.results && responseBody.results.length > 0) {
+                    
+                    responseBody.results.forEach(track => {
+                        // ప్రతి సినిమా సాంగ్ యొక్క నిజమైన రంగుల పోస్టర్ ని సేకరిస్తుంది
+                        const coverArt = track.artworkUrl100 ? track.artworkUrl100.replace("100x100bb", "300x300bb") : "";
+
+                        playlist.push({
+                            name: track.trackName || "Live Song",    /* అసలు పాట పేరు */
+                            url: track.previewUrl,                  /* ఆడియో ప్లే మరియు డౌన్‌లోడ్ కి ఉపయోగపడే లింక్ */
+                            album: track.collectionName || "Movie", /* సినిమా లేదా ఆల్బమ్ పేరు */
+                            artist: track.artistName || "Singer",   /* సింగర్ పేరు */
+                            art: coverArt                           /* సినిమా ఒరిజినల్ పోస్టర్ */
+                        });
+                    });
+                    
+                    // లోడింగ్ ను ఆపి సెర్చ్ బటన్ ని వెంటనే సాధారణ స్థితికి తెస్తుంది
+                    finishSearch(responseBody.results.length);
+                } else {
+                    // ఆన్‌లైన్ లో ఏవీ దొరకకపోతే మీ పాత దేవర పాటలు సేఫ్ గా లోడ్ అవుతాయి
+                    if (typeof teluguMegaDatabase !== 'undefined') {
+                        teluguMegaDatabase.forEach(track => { playlist.push(track); });
+                        finishSearch(teluguMegaDatabase.length);
+                    } else {
+                        finishSearch(0);
+                    }
+                }
+            })
+            .catch(err => {
+                // సర్వర్ టైమ్ అవుట్ అయినా బ్రౌజర్ క్రాష్ అవ్వకుండా కాపాడే సేఫ్ గార్డ్
+                console.log("Safe network fallback triggered.");
+                if (typeof teluguMegaDatabase !== 'undefined') playlist = [...teluguMegaDatabase];
+                
+                // ఒకవేళ మీ కోడ్ లో 'renderPlaylist' లో ఏదైనా లోపం ఉన్నా బ్రౌజర్ ఆగకుండా ఇక్కడ సేఫ్ గా రన్ చేస్తుంది
+                try { renderPlaylist(); } catch(e) { console.log("Render skipped safely."); }
+                
+                // సెర్చ్ బటన్ వెతుకుతూనే ఉండకుండా వెంటనే రీసెట్ చేస్తుంది
+                const sBtn = document.getElementById('search-btn') || document.querySelector('.search-box button');
+                if(sBtn) {
+                    sBtn.textContent = '🔍 Search';
+                    sBtn.disabled = false;
+                }
+            });
+    }
+
+    function finishSearch(loadedCount) {
+        searchBtn.textContent = '🔍 Search';
+        searchBtn.disabled = false;
+        renderPlaylist();
+
+        if (currentTrackIndex === -1 && playlist.length > 0) {
+            loadTrack(playlist.length - loadedCount);
+        }
+    }
+}
+        // Setup Audio Node Routing for Equalizer & Visualizer
+        function setupAudioNodes() {
+            if (audioContext) return; 
+            
+            try {
+                // Web Audio API Context
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                audioSource = audioContext.createMediaElementSource(audio);
+                
+                // FIXED: Frequencies are now correctly filled in
+                const frequencies = [60, 230, 910, 4000, 14000];
+                let lastNode = audioSource;
+
+                // Build out Peaking Filters for Equalizer
+                eqFilters = frequencies.map((freq) => {
+                    const filter = audioContext.createBiquadFilter();
+                    filter.type = 'peaking';
+                    filter.frequency.value = freq;
+                    filter.Q.value = 1;
+                    filter.gain.value = 0; // Default to neutral
+                    
+                    lastNode.connect(filter);
+                    lastNode = filter;
+                    return filter;
+                });
+
+                // Analyser node for the Audio Visualizer animation
+                analyser = audioContext.createAnalyser();
+analyser.fftSize = 128; // బార్ల సంఖ్యను రెట్టింపు చేయడానికి 128 గా మార్చాము
+
+                
+                lastNode.connect(analyser);
+                analyser.connect(audioContext.destination);
+
+                // Connect UI Sliders to the Equalizer filters
+                document.querySelectorAll('.eq-filter').forEach((slider, index) => {
+                    slider.addEventListener('input', (e) => {
+                        if (eqFilters[index]) {
+                            eqFilters[index].gain.value = parseFloat(e.target.value);
+                        }
+                    });
+                });
+
+                drawVisualizer();
+            } catch (e) {
+                console.error("Audio Context initialization failed:", e);
+            }
+        }
+
+        // Handle file importing from storage and read embedded cover artwork safely
+fileInput.addEventListener('change', (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
+    files.forEach(file => {
+        const reader = new FileReader();
+        
+        reader.onload = function(event) {
+            let albumName = "Local Track";
+            let artistName = "Unknown Details";
+            let artURL = ""; // పోస్టర్ ఇమేజ్ స్టోర్ చేయడానికి
+
+            try {
+                const buffer = event.target.result;
+                const view = new DataView(buffer);
+                
+                // సాంగ్ ఫైల్ లోపల దాగి ఉన్న నిజమైన సినిమా పోస్టర్ (ID3v2 APIC) ని వెతికి పట్టుకోవడం
+                let offset = 0;
+                const textDecoder = new TextDecoder("utf-8");
+                if (textDecoder.decode(new Uint8Array(buffer, 0, 3)) === "ID3") {
+                    // సాంగ్ లోపల ఇమేజ్ డేటా కోసం స్కాన్ లాజిక్
+                    const u8 = new Uint8Array(buffer);
+                    for (let i = 0; i < u8.length - 10; i++) {
+                        if (u8[i] === 65 && u8[i+1] === 80 && u8[i+2] === 73 && u8[i+3] === 67) { // "APIC" ట్యాగ్
+                            let imgOffset = i + 10;
+                            // ఇమేజ్ టైప్ (jpeg/png) వెతికే ప్రక్రియ
+                            while (imgOffset < u8.length && u8[imgOffset] !== 0xFF && u8[imgOffset] !== 0x89) {
+                                imgOffset++;
+                            }
+                            let imgLength = 0;
+                            // ఇమేజ్ సైజును గుర్తించడం
+                            for (let j = i + 4; j < i + 8; j++) {
+                                imgLength = (imgLength << 8) + u8[j];
+                            }
+                            if (imgLength > 0 && imgOffset + imgLength <= u8.length) {
+                                const blob = new Blob([u8.subarray(imgOffset, imgOffset + imgLength)], { type: "image/jpeg" });
+                                artURL = URL.createObjectURL(blob); // సినిమా పోస్టర్ లింక్ రెడీ అయింది
+                            }
+                            break;
+                        }
+                    }
+                }
+            } catch (err) {
+                console.log("Poster scanning skipped.");
+            }
+
+            playlist.push({
+                name: file.name.replace(/\.[^/.]+$/, ""),
+                url: URL.createObjectURL(file),
+                album: albumName,
+                artist: artistName,
+                art: artURL // కనుగొన్న నిజమైన సినిమా పోస్టర్ ఇక్కడ సేవ్ అవుతుంది
+            });
+
+            renderPlaylist();
+            if (currentTrackIndex === -1 && playlist.length === 1) {
+                loadTrack(0);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    });
+});
+
+
+
+                // Dynamic Playlist Render with Delete option
+        function renderPlaylist() {
+            playlistList.innerHTML = '';
+            playlist.forEach((track, index) => {
+                const li = document.createElement('li');
+                li.className = `playlist-item ${index === currentTrackIndex ? 'active' : ''}`;
+                
+                // Text span for the song name
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = track.name;
+                nameSpan.style.flexGrow = "1";
+                nameSpan.style.overflow = "hidden";
+                nameSpan.style.textOverflow = "ellipsis";
+                nameSpan.addEventListener('click', () => loadTrack(index));
+                
+                // Create the delete button element
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-btn';
+                deleteBtn.textContent = '🗑️';
+                deleteBtn.title = 'Remove song';
+                
+                // Delete button functionality
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevents the song from playing when clicking delete
+                    
+                    // Remove song from playlist storage array
+                    playlist.splice(index, 1);
+                    
+                    // Adjust track tracking indices securely
+                    if (index === currentTrackIndex) {
+                        if (playlist.length > 0) {
+                            // If deleted song was playing, load the next available song
+                            const nextToPlay = index >= playlist.length ? 0 : index;
+                            loadTrack(nextToPlay);
+                        } else {
+                            // If no songs left, reset player completely
+                            audio.pause();
+                            audio.src = '';
+                            currentTrackIndex = -1;
+                            document.getElementById('track-name').textContent = 'No track selected';
+                            document.getElementById('track-album').textContent = '';
+                            document.getElementById('track-artist').textContent = '';
+                            document.getElementById('cd-thumb').classList.remove('playing');
+                            document.getElementById('cd-needle').classList.remove('playing');
+                        }
+                    } else if (index < currentTrackIndex) {
+                        // Shift tracking pointer backwards if an earlier song was removed
+                        currentTrackIndex--;
+                    }
+                    
+                    renderPlaylist();
+                });
+
+                li.appendChild(nameSpan);
+                li.appendChild(deleteBtn);
+                playlistList.appendChild(li);
+            });
+        }
+
+
+        // Sorting configuration
+        sortSelect.addEventListener('change', (e) => {
+            const criteria = e.target.value;
+            if (criteria === 'az') {
+                playlist.sort((a, b) => a.name.localeCompare(b.name));
+            } else if (criteria === 'za') {
+                playlist.sort((a, b) => b.name.localeCompare(a.name));
+            }
+            renderPlaylist();
+            // Re-find active track index after sorting
+            if(audio.src) {
+                currentTrackIndex = playlist.findIndex(track => track.url === audio.src);
+                renderPlaylist();
+            }
+        });
+
+function loadTrack(index) {
+    if (index < 0 || index >= playlist.length) return;
+    
+    currentTrackIndex = index;
+    renderPlaylist();
+
+    audio.src = playlist[index].url;
+    trackNameText.textContent = playlist[index].name;
+    document.getElementById('track-album').textContent = `🎬 Album: ${playlist[index].album}`;
+    document.getElementById('track-artist').textContent = `🎤 Artist: ${playlist[index].artist}`;
+
+    // 1. ఒకవేళ పాటలో నిజమైన సినిమా పోస్టర్ ఉంటే దానిని అప్లై చేస్తుంది
+    if (playlist[index].art && playlist[index].art !== "") {
+        cdThumb.style.background = `url('${playlist[index].art}')`;
+        cdThumb.style.backgroundSize = 'cover';
+        cdThumb.style.backgroundPosition = 'center';
+        cdThumb.style.backgroundRepeat = 'no-repeat';
+    } else {
+        // 2. ఒకవేళ పోస్టర్ లేకపోతే సిడి బ్లాక్ అవ్వకుండా కలర్‌ఫుల్‌గా మారుతుంది
+        const colorSets = [
+            ['#ff5e00', '#00d2ff', '#ff007f'],
+            ['#bd00ff', '#39ff14', '#00f5d4'],
+            ['#ff0055', '#ffcc00', '#0099ff'],
+            ['#00ffcc', '#ff00ff', '#ffff00']
+        ];
+        const setId = playlist[index].name.length % colorSets.length;
+        const colors = colorSets[setId];
+
+        cdThumb.style.background = `
+            radial-gradient(circle, transparent 20%, rgba(0,0,0,0.6) 21%, transparent 26%),
+            linear-gradient(45deg, rgba(255,255,255,0.1) 45%, rgba(0,0,0,0.4) 50%, rgba(255,255,255,0.1) 55%),
+            conic-gradient(from 0deg, ${colors} 0%, ${colors} 25%, ${colors} 50%, ${colors} 75%, ${colors} 100%)
+        `;
+    }
+    
+    setupAudioNodes();
+    
+    if (audioContext && audioContext.state === 'suspended') {
+        audioContext.resume();
+    }
+    
+    audio.play().then(() => {
+        playBtn.textContent = '⏸';
+        cdThumb.classList.add('playing');
+        document.getElementById('cd-needle').classList.add('playing');
+    }).catch(err => {
+        playBtn.textContent = '▶';
+        cdThumb.classList.remove('playing');
+        document.getElementById('cd-needle').classList.remove('playing');
+    });
+}
+        // Play/Pause toggler
+        playBtn.addEventListener('click', () => {
+            if (playlist.length === 0) return;
+            
+            setupAudioNodes();
+            if (audioContext && audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+
+            if (audio.paused) {
+                audio.play();
+                playBtn.textContent = '⏸';
+                cdThumb.classList.add('playing');
+    document.getElementById('cd-needle').classList.add('playing'); // Swings needle in
+} else {
+    audio.pause();
+    playBtn.textContent = '▶';
+    cdThumb.classList.remove('playing');
+    document.getElementById('cd-needle').classList.remove('playing'); // Swings needle back
+}
+        });
+
+        // Navigation controls
+        nextBtn.addEventListener('click', () => {
+    if (playlist.length === 0) return;
+    if (isShuffle && playlist.length > 1) {
+        let randomIndex = Math.floor(Math.random() * playlist.length);
+        while (randomIndex === currentTrackIndex) {
+            randomIndex = Math.floor(Math.random() * playlist.length);
+        }
+        loadTrack(randomIndex);
+    } else {
+        let nextIndex = currentTrackIndex + 1;
+        if (nextIndex >= playlist.length) nextIndex = 0; 
+        loadTrack(nextIndex);
+    }
+});
+       shuffleBtn.addEventListener('click', () => {
+    isShuffle = !isShuffle;
+    shuffleBtn.classList.toggle('active', isShuffle);
+});
+
+repeatBtn.addEventListener('click', () => {
+    isRepeat = !isRepeat;
+    repeatBtn.classList.toggle('active', isRepeat);
+}); 
+
+        prevBtn.addEventListener('click', () => {
+            if (playlist.length === 0) return;
+            let prevIndex = currentTrackIndex - 1;
+            if (prevIndex < 0) prevIndex = playlist.length - 1; // Go to end
+            loadTrack(prevIndex);
+        });
+
+        // Autoplay next track when current one ends
+       audio.addEventListener('ended', () => {
+    if (isRepeat) {
+        loadTrack(currentTrackIndex);
+    } else if (isShuffle && playlist.length > 1) {
+        let randomIndex = Math.floor(Math.random() * playlist.length);
+        while (randomIndex === currentTrackIndex) {
+            randomIndex = Math.floor(Math.random() * playlist.length);
+        }
+        loadTrack(randomIndex);
+    } else {
+        nextBtn.click();
+    }
+});
+
+        // Time updates and slider binding
+        audio.addEventListener('timeupdate', () => {
+            if (isNaN(audio.duration)) return;
+            const progress = (audio.currentTime / audio.duration) * 100;
+            progressBar.value = progress;
+            currentTimeText.textContent = formatTime(audio.currentTime);
+        });
+
+        audio.addEventListener('loadedmetadata', () => {
+            totalDurationText.textContent = formatTime(audio.duration);
+        });
+
+        progressBar.addEventListener('input', (e) => {
+            if (!audio.duration) return;
+            audio.currentTime = (e.target.value / 100) * audio.duration;
+        });
+
+        // Volume logic
+        volumeBar.addEventListener('input', (e) => {
+            audio.volume = e.target.value / 100;
+        });
+
+        // Helper: Time Formatter
+        function formatTime(secs) {
+            const minutes = Math.floor(secs / 60);
+            const seconds = Math.floor(secs % 60);
+            return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+        }
+
+       function drawVisualizer() {
+    requestAnimationFrame(drawVisualizer);
+    if (!analyser) return;
+
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    analyser.getByteFrequencyData(dataArray);
+
+    canvasCtx.fillStyle = '#f8f9fa';
+    canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const barWidth = (canvas.width / bufferLength) * 2.1;
+    let barHeight;
+    let x = 0;
+
+    // బంతుల ట్రాకింగ్ అరేని బార్ల సంఖ్యకు సమానంగా రీ-సైజ్ చేయడం
+    if (barPeaks.length !== bufferLength) {
+        barPeaks = new Array(bufferLength).fill(0);
+    }
+
+    for (let i = 0; i < bufferLength; i++) {
+        barHeight = dataArray[i] / 2.5;
+// HSL కలర్ వీల్‌ను 0 నుండి 360 డిగ్రీల వరకు పూర్తిగా వాడటం వల్ల స్వచ్ఛమైన రెయిన్‌బో రంగులు వస్తాయి
+const barColor = `hsl(${(i * 360) / bufferLength}, 100%, 50%)`;
+
+
+
+        canvasCtx.fillStyle = barColor;
+        
+        // 1. మ్యూజిక్ బార్‌ను డ్రా చేయడం
+        canvasCtx.fillRect(x, canvas.height - barHeight, barWidth - 2, barHeight);
+
+        // 2. బంతులు పైకి ఎగిరే లాజిక్ (Gravity & Peak Drop Effect)
+        if (barHeight > barPeaks[i]) {
+            // సంగీతం పెరిగినప్పుడు బంతి బార్‌తో పాటు పైకి వెళ్తుంది
+            barPeaks[i] = barHeight; 
+        } else {
+            // సంగీతం తగ్గినప్పుడు బంతి గ్రావిటీ వల్ల నెమ్మదిగా కిందకి పడుతుంది
+            barPeaks[i] -= 0.8; 
+        }
+
+        // బంతి మరీ కాన్వాస్ కిందకి వెళ్లకుండా సేఫ్టీ చెక్
+        if (barPeaks[i] < 0) barPeaks[i] = 0;
+
+        // 3. బార్ మీద బంతిని (Circle) డ్రా చేయడం
+        const ballRadius = 4; // బార్ వెడల్పును బట్టి బంతి సైజ్
+        const ballX = x + (ballRadius - 1) / 2;
+        const ballY = canvas.height - barPeaks[i] - ballRadius - 4; // బార్ కంటే 2px పైన ఉంటుంది
+
+        if (barPeaks[i] > 0) {
+            canvasCtx.beginPath();
+            canvasCtx.arc(ballX, ballY, ballRadius, 0, Math.PI * 2);
+            canvasCtx.fillStyle = barColor; // బార్ రంగులోనే బంతి కూడా ఉంటుంది
+            canvasCtx.fill();
+            canvasCtx.closePath();
+        }
+
+        x += barWidth;
+    }
+}
+
+
+    </script>
+
+</body>
+</html>
