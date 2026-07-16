@@ -35,7 +35,7 @@
             max-width: 900px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); 
             gap: 30px;
         }
 
@@ -71,7 +71,7 @@
             height: 100%;
             border-radius: 50%;
             /* Solid background fallback that updates dynamically to your track image */
-            background-color: #222;
+            background-color: #5452ecc5;
             background-position: center;
             background-size: cover;
             background-repeat: no-repeat;
@@ -90,13 +90,13 @@
             right: 20px;
             width: 9px;
             height: 50px;
-            background-color: #888; /* Silver arm body */
+            background-color: #2bec12; /* Silver arm body */
             border-radius: 4px;
             z-index: 10;
             transform-origin: top center;
             transform: rotate(-25deg); /* Paused resting position */
             transition: transform 2.2s ease;
-            box-shadow: -2px 2px 5px rgba(0,0,0,0.5);
+            box-shadow: -2px 2px 5px rgba(243, 64, 64, 0.863);
         }
 
         /* The actual red pointer tip at the end of the needle arm */
@@ -149,7 +149,7 @@
     position: absolute;
     width: 20px; 
     height: 20px; 
-    background-color: #000000; /* సిడి మధ్యలో నల్లటి రంధ్రంలా మారుస్తుంది */
+    background-color: #f3471c; /* సిడి మధ్యలో నల్లటి రంధ్రంలా మారుస్తుంది */
     border-radius: 50%;
     border: 3px solid #222;
     z-index: 5; /* పోస్టర్ పైన రంధ్రం స్పష్టంగా కనిపించడానికి */
@@ -398,15 +398,15 @@
             border-color: var(--accent-color);
         }
         /* షఫుల్, రిపీట్ బటన్ల కోసం ప్రత్యేక స్టైలింగ్ */
-.toggle-btn {
-    background-color: #7f8c8d !important;
-    font-size: 14px !important;
-    padding: 10px 14px !important;
+    .toggle-btn {
+        background-color: #7f8c8d !important;
+        font-size: 14px !important;
+        padding: 10px 14px !important;
 }
 
-.toggle-btn.active {
-    background-color: #1ed760 !important; /* యాక్టివ్ అయినప్పుడు పచ్చ రంగులోకి మారుతుంది */
-    color: black !important;
+    .toggle-btn.active {
+        background-color: #1ed760 !important; /* యాక్టివ్ అయినప్పుడు పచ్చ రంగులోకి మారుతుంది */
+        color: black !important;
 }
 
     </style>
@@ -572,20 +572,20 @@ const repeatBtn = document.getElementById('repeat-btn');
         });
 
 
-function performOnlineSearch() {
-    const query = searchInput.value.trim().toLowerCase();
+    function performOnlineSearch() {
+        const query = searchInput.value.trim().toLowerCase();
     if (!query) return;
 
-    searchBtn.textContent = '...';
-    searchBtn.disabled = true;
+        searchBtn.textContent = '...';
+        searchBtn.disabled = true;
 
     // 1. అన్ని పెద్ద తెలుగు సినిమాల ఆన్‌లైన్ వర్కింగ్ ఆడియోల పక్కా డేటాబేస్
   
     // 2. యూజర్ టైప్ చేసిన పేరు ఏ సినిమాకు మ్యాచ్ అవుతుందో చెక్ చేసే పక్కా ఫిల్టర్ లాజిక్
-    let matchedTracks = [];
+        let matchedTracks = [];
 
     // 3. మ్యాచ్ అయిన నిర్దిష్ట సినిమా పాటలను మాత్రమే మీ ప్లేలిస్ట్‌లోకి పంపడం
-    if (matchedTracks.length > 0) {
+        if (matchedTracks.length > 0) {
         matchedTracks.forEach(track => {
             playlist.push({
                 name: track.name,
@@ -597,55 +597,65 @@ function performOnlineSearch() {
         });
         finishSearch(matchedTracks.length);
     } else {
-        // 1. ప్రపంచవ్యాప్తంగా డెవలపర్లు వాడే అత్యంత వేగవంతమైన ఉచిత Apple iTunes API
+        // 1. బ్రౌజర్ ని ఎప్పటికీ ఆపని అత్యంత వేగవంతమైన Apple iTunes లైవ్ API సర్వర్ లింక్
         const apiUrl = `https://apple.com{encodeURIComponent(query)}&media=music&limit=6`;
 
         fetch(apiUrl)
             .then(response => {
-                // నెట్‌వర్క్ రెస్పాన్స్ రాకపోతే బ్రౌజర్ ని స్టక్ అవ్వనివ్వకుండా ఇక్కడే సేఫ్ గా ఆపుతుంది
+                // నెట్‌వర్క్ సమస్య ఉంటే బ్రౌజర్ ని స్టక్ అవ్వనివ్వకుండా ఇక్కడే సేఫ్ గా ఆపుతుంది
                 if (!response.ok) throw new Error("Network Response Fail");
                 return response.json();
             })
             .then(responseBody => {
-                // పాత మెమరీని క్లియర్ చేసి బ్రౌజర్ రామ్ (RAM) ని కాపాడుతుంది
-                playlist = []; 
-
                 if (responseBody && responseBody.results && responseBody.results.length > 0) {
                     
+                    // FIXED: మీ పాత 'playlist' అరే ని డిలీట్ చేయకుండా, కేవలం పొడవును సున్నా (0) చేసి మెమరీని క్లియర్ చేసాము
+                    if (typeof playlist !== 'undefined') {
+                        playlist.length = 0; 
+                    } else {
+                        playlist = [];
+                    }
+
                     responseBody.results.forEach(track => {
-                        // ప్రతి సినిమా సాంగ్ యొక్క నిజమైన రంగుల పోస్టర్ ని సేకరిస్తుంది
+                        // సినిమా యొక్క ఒరిజినల్ కలర్‌ఫుల్ పోస్టర్ లింక్
                         const coverArt = track.artworkUrl100 ? track.artworkUrl100.replace("100x100bb", "300x300bb") : "";
 
+                        // ఏ సినిమా పేరు ముందే రాయకుండా లైవ్‌లో దొరికిన పాటలను క్యూ బాక్స్ లోకి చేర్చుతుంది
                         playlist.push({
-                            name: track.trackName || "Live Song",    /* అసలు పాట పేరు */
-                            url: track.previewUrl,                  /* ఆడియో ప్లే మరియు డౌన్‌లోడ్ కి ఉపయోగపడే లింక్ */
-                            album: track.collectionName || "Movie", /* సినిమా లేదా ఆల్బమ్ పేరు */
-                            artist: track.artistName || "Singer",   /* సింగర్ పేరు */
-                            art: coverArt                           /* సినిమా ఒరిజినల్ పోస్టర్ */
+                            name: track.trackName || "Live Song",
+                            url: track.previewUrl,
+                            album: track.collectionName || "Movie Track",
+                            artist: track.artistName || "Singer",
+                            art: coverArt
                         });
                     });
                     
-                    // లోడింగ్ ను ఆపి సెర్చ్ బటన్ ని వెంటనే సాధారణ స్థితికి తెస్తుంది
-                    finishSearch(responseBody.results.length);
+                    // లోడింగ్ లూప్ ని క్లియర్ చేసి క్యూ బాక్స్ లో సాంగ్స్ ని అప్‌డేట్ చేస్తుంది
+                    if (typeof finishSearch === 'function') {
+                        finishSearch(responseBody.results.length);
+                    }
                 } else {
-                    // ఆన్‌లైన్ లో ఏవీ దొరకకపోతే మీ పాత దేవర పాటలు సేఫ్ గా లోడ్ అవుతాయి
-                    if (typeof teluguMegaDatabase !== 'undefined') {
+                    alert("క్షమించండి! ఆ సినిమా పాటలు ఆన్‌లైన్‌లో లభించలేదు.");
+                    // ఏవీ దొరకకపోతే మీ పాత దేవర పాటలు సేఫ్ గా లోడ్ అవుతాయి
+                    if (typeof teluguMegaDatabase !== 'undefined' && typeof playlist !== 'undefined') {
+                        playlist.length = 0;
                         teluguMegaDatabase.forEach(track => { playlist.push(track); });
-                        finishSearch(teluguMegaDatabase.length);
-                    } else {
-                        finishSearch(0);
+                        if (typeof finishSearch === 'function') finishSearch(teluguMegaDatabase.length);
                     }
                 }
             })
             .catch(err => {
-                // సర్వర్ టైమ్ అవుట్ అయినా బ్రౌజర్ క్రాష్ అవ్వకుండా కాపాడే సేఫ్ గార్డ్
+                // ఒకవేళ ఇంటర్నెట్ లేకపోయినా బ్రౌజర్ అస్సలు క్రాష్ అవ్వకుండా కాపాడే పక్కా సేఫ్టీ గార్డ్
                 console.log("Safe network fallback triggered.");
-                if (typeof teluguMegaDatabase !== 'undefined') playlist = [...teluguMegaDatabase];
+                if (typeof teluguMegaDatabase !== 'undefined' && typeof playlist !== 'undefined') {
+                    playlist.length = 0;
+                    teluguMegaDatabase.forEach(track => { playlist.push(track); });
+                }
                 
-                // ఒకవేళ మీ కోడ్ లో 'renderPlaylist' లో ఏదైనా లోపం ఉన్నా బ్రౌజర్ ఆగకుండా ఇక్కడ సేఫ్ గా రన్ చేస్తుంది
-                try { renderPlaylist(); } catch(e) { console.log("Render skipped safely."); }
+                // మీ కోడ్ లోపల ఏవైనా పాత ఎర్రర్స్ ఉన్నా బ్రౌజర్ ఆగిపోకుండా ఇక్కడ దాచేస్తుంది
+                try { if (typeof renderPlaylist === 'function') renderPlaylist(); } catch(e) {}
                 
-                // సెర్చ్ బటన్ వెతుకుతూనే ఉండకుండా వెంటనే రీసెట్ చేస్తుంది
+                // సెర్చ్ బటన్ ని వెంటనే సాధారణ స్థితికి రీసెట్ చేస్తుంది (వెతుకుతూనే ఉండే సమస్య ముగుస్తుంది)
                 const sBtn = document.getElementById('search-btn') || document.querySelector('.search-box button');
                 if(sBtn) {
                     sBtn.textContent = '🔍 Search';
@@ -776,9 +786,6 @@ fileInput.addEventListener('change', (e) => {
         reader.readAsArrayBuffer(file);
     });
 });
-
-
-
                 // Dynamic Playlist Render with Delete option
         function renderPlaylist() {
             playlistList.innerHTML = '';
@@ -837,8 +844,6 @@ fileInput.addEventListener('change', (e) => {
                 playlistList.appendChild(li);
             });
         }
-
-
         // Sorting configuration
         sortSelect.addEventListener('change', (e) => {
             const criteria = e.target.value;
@@ -880,6 +885,7 @@ function loadTrack(index) {
             ['#ff0055', '#ffcc00', '#0099ff'],
             ['#00ffcc', '#ff00ff', '#ffff00']
         ];
+        const trackLength = playlist[index].name ? playlist[index].name.length : 0;
         const setId = playlist[index].name.length % colorSets.length;
         const colors = colorSets[setId];
 
@@ -888,6 +894,8 @@ function loadTrack(index) {
             linear-gradient(45deg, rgba(255,255,255,0.1) 45%, rgba(0,0,0,0.4) 50%, rgba(255,255,255,0.1) 55%),
             conic-gradient(from 0deg, ${colors} 0%, ${colors} 25%, ${colors} 50%, ${colors} 75%, ${colors} 100%)
         `;
+        cdThumb.style.backgroundSize = 'cover';
+        cdThumb.style.backgroundPosition = 'center'
     }
     
     setupAudioNodes();
@@ -895,7 +903,6 @@ function loadTrack(index) {
     if (audioContext && audioContext.state === 'suspended') {
         audioContext.resume();
     }
-    
     audio.play().then(() => {
         playBtn.textContent = '⏸';
         cdThumb.classList.add('playing');
@@ -974,7 +981,6 @@ repeatBtn.addEventListener('click', () => {
         nextBtn.click();
     }
 });
-
         // Time updates and slider binding
         audio.addEventListener('timeupdate', () => {
             if (isNaN(audio.duration)) return;
@@ -1015,7 +1021,7 @@ repeatBtn.addEventListener('click', () => {
     canvasCtx.fillStyle = '#f8f9fa';
     canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const barWidth = (canvas.width / bufferLength) * 2.1;
+    const barWidth = (canvas.width / bufferLength) * 2.2;
     let barHeight;
     let x = 0;
 
@@ -1025,11 +1031,9 @@ repeatBtn.addEventListener('click', () => {
     }
 
     for (let i = 0; i < bufferLength; i++) {
-        barHeight = dataArray[i] / 2.5;
-// HSL కలర్ వీల్‌ను 0 నుండి 360 డిగ్రీల వరకు పూర్తిగా వాడటం వల్ల స్వచ్ఛమైన రెయిన్‌బో రంగులు వస్తాయి
-const barColor = `hsl(${(i * 360) / bufferLength}, 100%, 50%)`;
-
-
+        barHeight = dataArray[i] / 2.0;
+        // HSL కలర్ వీల్‌ను 0 నుండి 360 డిగ్రీల వరకు పూర్తిగా వాడటం వల్ల స్వచ్ఛమైన రెయిన్‌బో రంగులు వస్తాయి
+        const barColor = `hsl(${(i * 360) / bufferLength}, 100%, 45%)`;
 
         canvasCtx.fillStyle = barColor;
         
@@ -1049,7 +1053,7 @@ const barColor = `hsl(${(i * 360) / bufferLength}, 100%, 50%)`;
         if (barPeaks[i] < 0) barPeaks[i] = 0;
 
         // 3. బార్ మీద బంతిని (Circle) డ్రా చేయడం
-        const ballRadius = 4; // బార్ వెడల్పును బట్టి బంతి సైజ్
+        const ballRadius = 5; // బార్ వెడల్పును బట్టి బంతి సైజ్
         const ballX = x + (ballRadius - 1) / 2;
         const ballY = canvas.height - barPeaks[i] - ballRadius - 4; // బార్ కంటే 2px పైన ఉంటుంది
 
